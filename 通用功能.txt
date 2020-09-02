@@ -1,0 +1,12 @@
+----跨服务器查询----
+exec sp_addlinkedserver   'es94124', ' ', 'SQLOLEDB ', 'es94124' 
+exec sp_addlinkedsrvlogin  'es94124', 'false',null, '用户名', '密码' 
+--查询示例  
+select a.客户名称,a.设备名称,b.设备名称 as 名称,b.设备型号,b.设备序列号,b.生产厂家 
+from es94124.esapp1.dbo.安装记录_主表 b   inner join 安装记录_主表 a on a.服务单号=b.服务单号
+where a.设备ID =''
+
+----查询sql中同样列名的表
+select sysObjects.name,sysObjects.id,sysColumns.name from sysColumns ,sysObjects
+where sysObjects.id=sysColumns.id and sysObjects.type='U' and sysColumns.name='用户ID'
+

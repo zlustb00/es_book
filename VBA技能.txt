@@ -1,0 +1,31 @@
+----判断窗口名称---
+If InStr(Application.Caption, "设计") > 0 Then
+
+MsgBox "Excel主窗口标题栏的名称是: " & Application.Caption
+Else
+
+MsgBox "失败了 "
+End If
+
+
+Private Sub CommandButton1_Click()
+If InStr(ThisWorkbook.Application.Caption, "填报") > 0 Then
+If Application.COMAddIns("esclient10.connect").Object.execupdate("T1") Then MsgBox "提交结案成功"
+else
+msgbox("无权限")
+end if
+End Sub
+
+
+----点击返回----
+Sub tishu()
+Application.COMAddIns("esclient10.connect").Object.execquery "T"
+End Sub
+Sub M(str As String)
+If InStr(str, "查看：") > 0 Or InStr(str, "修改") > 0 Or InStr(str, "填报") > 0Then tishu
+End Sub
+
+
+Private Sub Workbook_WindowActivate(ByVal Wn As Window)
+Call M(Wn.Caption)
+End Sub
