@@ -1,4 +1,4 @@
-----跨服务器查询----
+---跨服务器查询----
 exec sp_addlinkedserver   'es94124', ' ', 'SQLOLEDB ', 'es94124' 
 exec sp_addlinkedsrvlogin  'es94124', 'false',null, '用户名', '密码' 
 --查询示例  
@@ -6,7 +6,96 @@ select a.客户名称,a.设备名称,b.设备名称 as 名称,b.设备型号,b.�
 from es94124.esapp1.dbo.安装记录_主表 b   inner join 安装记录_主表 a on a.服务单号=b.服务单号
 where a.设备ID =''
 
-----查询sql中同样列名的表
+---查询sql中同样列名的表
 select sysObjects.name,sysObjects.id,sysColumns.name from sysColumns ,sysObjects
 where sysObjects.id=sysColumns.id and sysObjects.type='U' and sysColumns.name='用户ID'
 
+---SQL去除回车符，换行符，空格和水平制表符--
+REPLACE(REPLACE(REPLACE(REPLACE([fieldName],CHAR(13),''),CHAR(10),''),CHAR(9),''),' ','')
+
+其中：
+char(9)    水平制表符 
+char(10)   换行
+char(13)   回车
+去掉空格
+replace('字段',' ','')
+去掉回车换行符号
+replace('字段',char(13)+char(10),'')
+
+
+---查询表空间大小，使用大小，总记录数---
+---方法一---
+DROP TABLE #temp
+CREATE TABLE #temp
+    (
+      name VARCHAR(100),
+      rows INT ,
+      reserved varchar(20),
+      data varchar(20),
+      index_size varchar(20),
+      unused varchar(20)
+    )
+  
+DECLARE @tablename VARCHAR(100)
+DECLARE @sql VARCHAR(500)
+DECLARE @str VARCHAR(100)
+DECLARE tablecursor CURSOR
+FOR
+    SELECT  name
+    FROM    sysobjects
+    WHERE   xtype = 'u' 
+OPEN tablecursor
+FETCH NEXT FROM tablecursor INTO @tablename
+WHILE @@fetch_status = 0 
+    BEGIN
+        SET @str = @tablename
+        SET @sql = 'insert into  #temp EXEC sp_spaceused ' + @tablename  
+        EXEC(@sql) 
+        FETCH NEXT FROM tablecursor INTO @tablename
+    END
+CLOSE tablecursor
+DEALLOCATE tablecursor
+SELECT  * FROM  #temp
+
+方法二:
+SELECT 
+    t.NAME AS TableName,
+    s.Name AS SchemaName,
+    p.rows AS RowCounts,
+    SUM(a.total_pages) * 8 AS TotalSpaceKB, 
+    CAST(ROUND(((SUM(a.total_pages) * 8) / 1024.00), 2) AS NUMERIC(36, 2)) AS TotalSpaceMB,
+    SUM(a.used_pages) * 8 AS UsedSpaceKB, 
+    CAST(ROUND(((SUM(a.used_pages) * 8) / 1024.00), 2) AS NUMERIC(36, 2)) AS UsedSpaceMB, 
+    (SUM(a.total_pages) - SUM(a.used_pages)) * 8 AS UnusedSpaceKB,
+    CAST(ROUND(((SUM(a.total_pages) - SUM(a.used_pages)) * 8) / 1024.00, 2) AS NUMERIC(36, 2)) AS UnusedSpaceMB
+FROM 
+    sys.tables t
+INNER JOIN      
+    sys.indexes i ON t.OBJECT_ID = i.object_id
+INNER JOIN 
+    sys.partitions p ON i.object_id = p.OBJECT_ID AND i.index_id = p.index_id
+INNER JOIN 
+    sys.allocation_units a ON p.partition_id = a.container_id
+LEFT OUTER JOIN 
+    sys.schemas s ON t.schema_id = s.schema_id
+WHERE 
+    t.NAME NOT LIKE 'dt%' 
+    AND t.is_ms_shipped = 0
+    AND i.OBJECT_ID > 255 
+GROUP BY 
+    t.Name, s.Name, p.Rows
+ORDER BY 
+    TotalSpaceMB DESC
+
+---正则表达式的一般用法---
+一、包含中文字符
+
+select * from 表名 where 列名 like '%[吖-座]%'
+
+二、包含英文字符
+
+select * from 表名 where 列名 like '%[a-z]%' 
+
+三、包含纯数字
+
+select * from 表名 where 列名 like '%[0-9]%'
